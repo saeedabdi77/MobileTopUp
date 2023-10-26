@@ -9,6 +9,8 @@ class Wallet(models.Model):
 
     @transaction.atomic
     def deposit(self, amount, transaction_number):
+        Wallet.objects.filter(id=self.id).select_for_update(nowait=False).get()
+
         transaction = self.transactions.create(
             transaction_number=transaction_number,
             amount=amount,
