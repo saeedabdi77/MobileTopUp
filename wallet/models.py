@@ -1,20 +1,26 @@
 from django.db import models
 from account.models import Seller
+from django.db import transaction
 
 
 class Wallet(models.Model):
     seller = models.OneToOneField(Seller, on_delete=models.CASCADE, related_name='wallet')
     balance = models.IntegerField(default=0)
 
+    @transaction.atomic
     def deposit(self, amount, transaction_number):
-        self.transactions.create(
+        transaction = self.transactions.create(
             transaction_number=transaction_number,
             amount=amount,
             running_balance=self.balance + amount,
         )
+
         self.balance += amount
         self.save()
 
+        return transaction
+
+    @transaction.atomic
     def top_up(self, amount, phone_number):
         if amount > self.balance:
             # raise error
@@ -24,6 +30,10 @@ class Wallet(models.Model):
         TopUpLog.create_log(self, phone_number, amount)
         self.balance -= amount
         self.save()
+
+    def __str__(self):
+        username = self.seller.user.username
+        return f'{username}  wallet'
 
 
 class Transaction(models.Model):
