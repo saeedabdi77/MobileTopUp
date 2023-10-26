@@ -35,7 +35,7 @@ class Transaction(models.Model):
 
 
 class TopUpLog(models.Model):
-    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='transactions')
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='top_up_logs')
     phone_number = models.CharField(max_length=25)
     amount = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)

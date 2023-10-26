@@ -6,5 +6,5 @@ class User(AbstractUser):
     pass
 
 
-class Seller(AbstractUser):
+class Seller(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
