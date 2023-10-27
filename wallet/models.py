@@ -19,8 +19,8 @@ class Wallet(models.Model):
             amount=amount,
             running_balance=self.balance + amount,
         )
-
-        self.balance += amount
+        balance = Wallet.objects.get(id=self.id).balance + amount
+        self.balance = balance
         self.save()
 
         return transaction
@@ -64,6 +64,6 @@ class TopUpLog(models.Model):
     @staticmethod
     def create_log(wallet, phone_number, amount):
         log = TopUpLog.objects.create(wallet=wallet,
-                                phone_number=phone_number,
-                                amount=amount)
+                                      phone_number=phone_number,
+                                      amount=amount)
         return log
