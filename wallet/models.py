@@ -1,6 +1,9 @@
+from django.utils.translation import gettext as _
+from django.core.validators import RegexValidator
 from django.db import models
 from account.models import Seller
 from django.db import transaction
+from utils.top_up_tools import top_up_phone_number
 
 
 class Wallet(models.Model):
@@ -9,7 +12,7 @@ class Wallet(models.Model):
 
     @transaction.atomic
     def deposit(self, amount, transaction_number):
-        Wallet.objects.filter(id=self.id).select_for_update(nowait=False).get()
+        Wallet.objects.filter(id=self.id).select_for_update().get()
 
         transaction = self.transactions.create(
             transaction_number=transaction_number,
@@ -24,14 +27,18 @@ class Wallet(models.Model):
 
     @transaction.atomic
     def top_up(self, amount, phone_number):
-        if amount > self.balance:
-            # raise error
-            raise
+        Wallet.objects.filter(id=self.id).select_for_update().get()
 
-        # call top up function
-        TopUpLog.create_log(self, phone_number, amount)
+        balance = Wallet.objects.get(id=self.id).balance
+        if amount > balance:
+            raise ValueError('Not enough balance')
+
+        top_up_phone_number(phone_number, amount)
+        top_up = TopUpLog.create_log(self, phone_number, amount)
         self.balance -= amount
         self.save()
+
+        return top_up
 
     def __str__(self):
         username = self.seller.user.username
@@ -48,12 +55,15 @@ class Transaction(models.Model):
 
 class TopUpLog(models.Model):
     wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='top_up_logs')
-    phone_number = models.CharField(max_length=25)
+    phone_regex = RegexValidator(regex=r'(09)[0-9]{9}$',
+                                 message=_('invalid phone number'))
+    phone_number = models.CharField(max_length=11, validators=[phone_regex])
     amount = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     @staticmethod
     def create_log(wallet, phone_number, amount):
-        TopUpLog.objects.create(wallet=wallet,
-                                phone_numbe=phone_number,
+        log = TopUpLog.objects.create(wallet=wallet,
+                                phone_number=phone_number,
                                 amount=amount)
+        return log
