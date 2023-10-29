@@ -32,15 +32,28 @@ class TopUpSerializer(serializers.ModelSerializer):
         fields = ('phone_number', 'amount')
         extra_kwargs = {'amount': {'required': True}}
 
-    def create(self, validated_data):
-        phone_number = validated_data['phone_number']
-        amount = validated_data['amount']
+    def get_current_user_wallet(self):
         request = self.context.get('request', None)
         user = request.user
         wallet = user.seller.wallet
+
+        return wallet
+
+    def validate(self, attrs):
+        wallet = self.get_current_user_wallet()
+        amount = attrs['amount']
+
+        if amount > wallet.balance:
+            raise serializers.ValidationError({"amount": "Not enough balance"})
+        return attrs
+
+    def create(self, validated_data):
+        phone_number = validated_data['phone_number']
+        amount = validated_data['amount']
+        wallet = self.get_current_user_wallet()
         try:
             top_up = wallet.top_up(amount, phone_number)
         except ValueError:
-            return serializers.ValidationError({"amount": "Not enough balance"})
+            raise serializers.ValidationError({"amount": "Not enough balance"})
 
         return top_up

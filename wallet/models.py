@@ -1,3 +1,5 @@
+import time
+
 from django.utils.translation import gettext as _
 from django.core.validators import RegexValidator
 from django.db import models
@@ -12,14 +14,16 @@ class Wallet(models.Model):
 
     @transaction.atomic
     def deposit(self, amount, transaction_number):
-        Wallet.objects.filter(id=self.id).select_for_update().get()
+        Wallet.objects.select_for_update().get(id=self.id)
+
+        balance = Wallet.objects.get(id=self.id).balance + amount
 
         transaction = self.transactions.create(
             transaction_number=transaction_number,
             amount=amount,
-            running_balance=self.balance + amount,
+            running_balance=balance,
         )
-        balance = Wallet.objects.get(id=self.id).balance + amount
+
         self.balance = balance
         self.save()
 
@@ -27,7 +31,7 @@ class Wallet(models.Model):
 
     @transaction.atomic
     def top_up(self, amount, phone_number):
-        Wallet.objects.filter(id=self.id).select_for_update().get()
+        Wallet.objects.select_for_update().get(id=self.id)
 
         balance = Wallet.objects.get(id=self.id).balance
         if amount > balance:
